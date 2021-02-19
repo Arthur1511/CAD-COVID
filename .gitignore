@@ -15,5 +15,5 @@ ipython_config.py
 */*.pt
 *.pt
 ./runs
-.pyc
-./logs
+codagan/logs
+codagan/__pycache__/
