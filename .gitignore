@@ -15,3 +15,5 @@ ipython_config.py
 */*.pt
 *.pt
 ./runs
+.pyc
+./logs
