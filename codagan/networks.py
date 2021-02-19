@@ -8,12 +8,13 @@ import torch
 import torch.nn.functional as F
 try:
     from itertools import izip as zip
-except ImportError: # Will be 3.x series.
+except ImportError:  # Will be 3.x series.
     pass
 
 ##################################################################################
 # Discriminator
 ##################################################################################
+
 
 class MsImageDis(nn.Module):
 
@@ -30,7 +31,8 @@ class MsImageDis(nn.Module):
         self.num_scales = params['num_scales']
         self.pad_type = params['pad_type']
         self.input_dim = input_dim
-        self.downsample = nn.AvgPool2d(3, stride=2, padding=[1, 1], count_include_pad=False)
+        self.downsample = nn.AvgPool2d(
+            3, stride=2, padding=[1, 1], count_include_pad=False)
         self.cnns = nn.ModuleList()
 
         for _ in range(self.num_scales):
@@ -40,9 +42,11 @@ class MsImageDis(nn.Module):
 
         dim = self.dim
         cnn_x = []
-        cnn_x += [Conv2dBlock(self.input_dim, dim, 4, 2, 1, norm='none', activation=self.activ, pad_type=self.pad_type)]
+        cnn_x += [Conv2dBlock(self.input_dim, dim, 4, 2, 1, norm='none',
+                              activation=self.activ, pad_type=self.pad_type)]
         for i in range(self.n_layer - 1):
-            cnn_x += [Conv2dBlock(dim, dim * 2, 4, 2, 1, norm=self.norm, activation=self.activ, pad_type=self.pad_type)]
+            cnn_x += [Conv2dBlock(dim, dim * 2, 4, 2, 1, norm=self.norm,
+                                  activation=self.activ, pad_type=self.pad_type)]
             dim *= 2
         cnn_x += [nn.Conv2d(dim, 1, 1, 1, 0)]
         cnn_x = nn.Sequential(*cnn_x)
@@ -67,8 +71,10 @@ class MsImageDis(nn.Module):
             if self.gan_type == 'lsgan':
                 loss += torch.mean((out0 - 0)**2) + torch.mean((out1 - 1)**2)
             elif self.gan_type == 'nsgan':
-                all0 = Variable(torch.zeros_like(out0.data).cuda(), requires_grad=False)
-                all1 = Variable(torch.ones_like(out1.data).cuda(), requires_grad=False)
+                all0 = Variable(torch.zeros_like(
+                    out0.data).cuda(), requires_grad=False)
+                all1 = Variable(torch.ones_like(
+                    out1.data).cuda(), requires_grad=False)
                 loss += torch.mean(F.binary_cross_entropy(F.sigmoid(out0), all0) +
                                    F.binary_cross_entropy(F.sigmoid(out1), all1))
             else:
@@ -81,9 +87,10 @@ class MsImageDis(nn.Module):
         loss = 0
         for it, (out0) in enumerate(outs0):
             if self.gan_type == 'lsgan':
-                loss += torch.mean((out0 - 1)**2) # LSGAN.
+                loss += torch.mean((out0 - 1)**2)  # LSGAN.
             elif self.gan_type == 'nsgan':
-                all1 = Variable(torch.ones_like(out0.data).cuda(), requires_grad=False)
+                all1 = Variable(torch.ones_like(
+                    out0.data).cuda(), requires_grad=False)
                 loss += torch.mean(F.binary_cross_entropy(F.sigmoid(out0), all1))
             else:
                 assert 0, "Unsupported GAN type: {}".format(self.gan_type)
@@ -92,6 +99,7 @@ class MsImageDis(nn.Module):
 ##################################################################################
 # Generator
 ##################################################################################
+
 
 class AdaINGen(nn.Module):
 
@@ -109,14 +117,18 @@ class AdaINGen(nn.Module):
         mlp_dim = params['mlp_dim']
 
         # Style encoder.
-        self.enc_style = StyleEncoder(4, input_dim, dim, style_dim, norm='none', activ=activ, pad_type=pad_type)
+        self.enc_style = StyleEncoder(
+            4, input_dim, dim, style_dim, norm='none', activ=activ, pad_type=pad_type)
 
         # Content encoder.
-        self.enc_content = ContentEncoder(n_downsample, n_res, input_dim, dim, 'in', activ, pad_type=pad_type)
-        self.dec = Decoder(n_downsample, n_res, self.enc_content.output_dim + n_datasets, input_dim - n_datasets, res_norm='adain', activ=activ, pad_type=pad_type)
+        self.enc_content = ContentEncoder(
+            n_downsample, n_res, input_dim, dim, 'in', activ, pad_type=pad_type)
+        self.dec = Decoder(n_downsample, n_res, self.enc_content.output_dim + n_datasets,
+                           input_dim - n_datasets, res_norm='adain', activ=activ, pad_type=pad_type)
 
         # MLP to generate AdaIN parameters.
-        self.mlp = MLP(style_dim, self.get_num_adain_params(self.dec), mlp_dim, 3, norm='none', activ=activ)
+        self.mlp = MLP(style_dim, self.get_num_adain_params(
+            self.dec), mlp_dim, 3, norm='none', activ=activ)
 
     def forward(self, images):
 
@@ -176,15 +188,18 @@ class VAEGen(nn.Module):
         pad_type = params['pad_type']
 
         # Content encoder.
-        self.enc = ContentEncoder(n_downsample, n_res, input_dim, dim, 'in', activ, pad_type=pad_type)
-        self.dec = Decoder(n_downsample, n_res, self.enc.output_dim + n_datasets, input_dim - n_datasets, res_norm='in', activ=activ, pad_type=pad_type)
+        self.enc = ContentEncoder(
+            n_downsample, n_res, input_dim, dim, 'in', activ, pad_type=pad_type)
+        self.dec = Decoder(n_downsample, n_res, self.enc.output_dim + n_datasets,
+                           input_dim - n_datasets, res_norm='in', activ=activ, pad_type=pad_type)
 
     def forward(self, images):
 
         # This is a reduced VAE implementation where we assume the outputs are multivariate Gaussian distribution with mean = hiddens and std_dev = all ones.
         hiddens = self.encode(images)
         if self.training == True:
-            noise = Variable(torch.randn(hiddens.size()).cuda(hiddens.data.get_device()))
+            noise = Variable(torch.randn(hiddens.size()).cuda(
+                hiddens.data.get_device()))
             images_recon = self.decode(hiddens + noise)
         else:
             images_recon = self.decode(hiddens)
@@ -193,7 +208,8 @@ class VAEGen(nn.Module):
     def encode(self, images):
 
         hiddens = self.enc(images)
-        noise = Variable(torch.randn(hiddens.size()).cuda(hiddens.data.get_device()))
+        noise = Variable(torch.randn(hiddens.size()).cuda(
+            hiddens.data.get_device()))
         return hiddens, noise
 
     def decode(self, hiddens):
@@ -213,13 +229,16 @@ class StyleEncoder(nn.Module):
         super(StyleEncoder, self).__init__()
 
         self.model = []
-        self.model += [Conv2dBlock(input_dim, dim, 7, 1, 3, norm=norm, activation=activ, pad_type=pad_type)]
+        self.model += [Conv2dBlock(input_dim, dim, 7, 1, 3,
+                                   norm=norm, activation=activ, pad_type=pad_type)]
         for i in range(2):
-            self.model += [Conv2dBlock(dim, 2 * dim, 4, 2, 1, norm=norm, activation=activ, pad_type=pad_type)]
+            self.model += [Conv2dBlock(dim, 2 * dim, 4, 2, 1,
+                                       norm=norm, activation=activ, pad_type=pad_type)]
             dim *= 2
         for i in range(n_downsample - 2):
-            self.model += [Conv2dBlock(dim, dim, 4, 2, 1, norm=norm, activation=activ, pad_type=pad_type)]
-        self.model += [nn.AdaptiveAvgPool2d(1)] # Global average pooling.
+            self.model += [Conv2dBlock(dim, dim, 4, 2, 1,
+                                       norm=norm, activation=activ, pad_type=pad_type)]
+        self.model += [nn.AdaptiveAvgPool2d(1)]  # Global average pooling.
         self.model += [nn.Conv2d(dim, style_dim, 1, 1, 0)]
         self.model = nn.Sequential(*self.model)
         self.output_dim = dim
@@ -228,6 +247,7 @@ class StyleEncoder(nn.Module):
 
         return self.model(x)
 
+
 class ContentEncoder(nn.Module):
 
     def __init__(self, n_downsample, n_res, input_dim, dim, norm, activ, pad_type):
@@ -235,20 +255,24 @@ class ContentEncoder(nn.Module):
         super(ContentEncoder, self).__init__()
 
         self.model = []
-        self.model += [Conv2dBlock(input_dim, dim, 7, 1, 3, norm=norm, activation=activ, pad_type=pad_type)]
+        self.model += [Conv2dBlock(input_dim, dim, 7, 1, 3,
+                                   norm=norm, activation=activ, pad_type=pad_type)]
 
         # Downsampling blocks.
         for i in range(n_downsample):
-            self.model += [Conv2dBlock(dim, 2 * dim, 4, 2, 1, norm=norm, activation=activ, pad_type=pad_type)]
+            self.model += [Conv2dBlock(dim, 2 * dim, 4, 2, 1,
+                                       norm=norm, activation=activ, pad_type=pad_type)]
             dim *= 2
         # Residual blocks.
-        self.model += [ResBlocks(n_res, dim, norm=norm, activation=activ, pad_type=pad_type)]
+        self.model += [ResBlocks(n_res, dim, norm=norm,
+                                 activation=activ, pad_type=pad_type)]
         self.model = nn.Sequential(*self.model)
         self.output_dim = dim
 
     def forward(self, x):
 
         return self.model(x)
+
 
 class Decoder(nn.Module):
 
@@ -259,7 +283,8 @@ class Decoder(nn.Module):
         self.model = []
 
         # AdaIN residual blocks.
-        self.model += [ResBlocks(n_res, dim, res_norm, activ, pad_type=pad_type)]
+        self.model += [ResBlocks(n_res, dim, res_norm,
+                                 activ, pad_type=pad_type)]
 
         # Upsampling blocks.
         for i in range(n_upsample):
@@ -268,7 +293,8 @@ class Decoder(nn.Module):
             dim //= 2
 
         # Use reflection padding in the last conv layer.
-        self.model += [Conv2dBlock(dim, output_dim, 7, 1, 3, norm='none', activation='tanh', pad_type=pad_type)]
+        self.model += [Conv2dBlock(dim, output_dim, 7, 1, 3,
+                                   norm='none', activation='tanh', pad_type=pad_type)]
         self.model = nn.Sequential(*self.model)
 
     def forward(self, x):
@@ -278,6 +304,8 @@ class Decoder(nn.Module):
 ##################################################################################
 # Sequential Models
 ##################################################################################
+
+
 class ResBlocks(nn.Module):
 
     def __init__(self, num_blocks, dim, norm='in', activation='relu', pad_type='zero'):
@@ -286,12 +314,14 @@ class ResBlocks(nn.Module):
 
         self.model = []
         for i in range(num_blocks):
-            self.model += [ResBlock(dim, norm=norm, activation=activation, pad_type=pad_type)]
+            self.model += [ResBlock(dim, norm=norm,
+                                    activation=activation, pad_type=pad_type)]
         self.model = nn.Sequential(*self.model)
 
     def forward(self, x):
 
         return self.model(x)
+
 
 class MLP(nn.Module):
 
@@ -300,10 +330,13 @@ class MLP(nn.Module):
         super(MLP, self).__init__()
 
         self.model = []
-        self.model += [LinearBlock(input_dim, dim, norm=norm, activation=activ)]
+        self.model += [LinearBlock(input_dim, dim,
+                                   norm=norm, activation=activ)]
         for i in range(n_blk - 2):
             self.model += [LinearBlock(dim, dim, norm=norm, activation=activ)]
-        self.model += [LinearBlock(dim, output_dim, norm='none', activation='none')] # no output activations
+        # no output activations
+        self.model += [LinearBlock(dim, output_dim,
+                                   norm='none', activation='none')]
         self.model = nn.Sequential(*self.model)
 
     def forward(self, x):
@@ -313,6 +346,8 @@ class MLP(nn.Module):
 ##################################################################################
 # Basic Blocks
 ##################################################################################
+
+
 class ResBlock(nn.Module):
 
     def __init__(self, dim, norm='in', activation='relu', pad_type='zero'):
@@ -320,8 +355,10 @@ class ResBlock(nn.Module):
         super(ResBlock, self).__init__()
 
         model = []
-        model += [Conv2dBlock(dim, dim, 3, 1, 1, norm=norm, activation=activation, pad_type=pad_type)]
-        model += [Conv2dBlock(dim, dim, 3, 1, 1, norm=norm, activation='none', pad_type=pad_type)]
+        model += [Conv2dBlock(dim, dim, 3, 1, 1, norm=norm,
+                              activation=activation, pad_type=pad_type)]
+        model += [Conv2dBlock(dim, dim, 3, 1, 1, norm=norm,
+                              activation='none', pad_type=pad_type)]
         self.model = nn.Sequential(*model)
 
     def forward(self, x):
@@ -331,9 +368,10 @@ class ResBlock(nn.Module):
         out += residual
         return out
 
+
 class Conv2dBlock(nn.Module):
 
-    def __init__(self, input_dim ,output_dim, kernel_size, stride,
+    def __init__(self, input_dim, output_dim, kernel_size, stride,
                  padding=0, norm='none', activation='relu', pad_type='zero'):
 
         super(Conv2dBlock, self).__init__()
@@ -382,7 +420,8 @@ class Conv2dBlock(nn.Module):
             assert 0, "Unsupported activation: {}".format(activation)
 
         # Initialize convolution.
-        self.conv = nn.Conv2d(input_dim, output_dim, kernel_size, stride, bias=self.use_bias)
+        self.conv = nn.Conv2d(input_dim, output_dim,
+                              kernel_size, stride, bias=self.use_bias)
 
     def forward(self, x):
 
@@ -392,6 +431,7 @@ class Conv2dBlock(nn.Module):
         if self.activation:
             x = self.activation(x)
         return x
+
 
 class LinearBlock(nn.Module):
 
@@ -445,6 +485,8 @@ class LinearBlock(nn.Module):
 ##################################################################################
 # VGG network definition
 ##################################################################################
+
+
 class Vgg16(nn.Module):
 
     def __init__(self):
@@ -506,6 +548,8 @@ class Vgg16(nn.Module):
 ##################################################################################
 # Normalization layers
 ##################################################################################
+
+
 class AdaptiveInstanceNorm2d(nn.Module):
 
     def __init__(self, num_features, eps=1e-5, momentum=0.1):
@@ -543,6 +587,7 @@ class AdaptiveInstanceNorm2d(nn.Module):
     def __repr__(self):
 
         return self.__class__.__name__ + '(' + str(self.num_features) + ')'
+
 
 class LayerNorm(nn.Module):
 
@@ -616,15 +661,18 @@ class _DecoderBlock(nn.Module):
             nn.Conv2d(in_channels, middle_channels, kernel_size=3, padding=1),
             nn.BatchNorm2d(middle_channels),
             nn.ReLU(inplace=True),
-            nn.Conv2d(middle_channels, middle_channels, kernel_size=3, padding=1),
+            nn.Conv2d(middle_channels, middle_channels,
+                      kernel_size=3, padding=1),
             nn.BatchNorm2d(middle_channels),
             nn.ReLU(inplace=True),
-            nn.ConvTranspose2d(middle_channels, out_channels, kernel_size=2, stride=2, padding=0, output_padding=0)
+            nn.ConvTranspose2d(middle_channels, out_channels,
+                               kernel_size=2, stride=2, padding=0, output_padding=0)
         )
 
     def forward(self, x):
 
         return self.decode(x)
+
 
 class UNet(nn.Module):
 
@@ -641,7 +689,6 @@ class UNet(nn.Module):
         #self.enc2 = _EncoderBlock(64, 128)
         self.enc3 = _EncoderBlock(128, 256)
         self.enc4 = _EncoderBlock(256, 512, dropout=True)
-
 
         # Decoders.
         self.center = _DecoderBlock(512, 1024, 512)
@@ -669,34 +716,39 @@ class UNet(nn.Module):
 
         # Encoding.
         enc3 = self.enc3(x)    # 64 -> 32.
-        enc4 = self.enc4(enc3) # 32 -> 16.
+        enc4 = self.enc4(enc3)  # 32 -> 16.
 
         # Decoding.
-        center = self.center(enc4) # 16 -> 32.
+        center = self.center(enc4)  # 16 -> 32.
 
-        dec4 = self.dec4(torch.cat([center, F.upsample(enc4, center.size()[2:], mode='bilinear')], 1)) # 32 -> 64.
-        dec3 = self.dec3(torch.cat([dec4, F.upsample(enc3, dec4.size()[2:], mode='bilinear')], 1)) # 64 -> 128.
-        dec2 = self.dec2(dec3) # 128 -> 256.
-        dec1 = self.dec1(dec2) # 256 -> 256.
+        # 32 -> 64.
+        dec4 = self.dec4(
+            torch.cat([center, F.upsample(enc4, center.size()[2:], mode='bilinear')], 1))
+        # 64 -> 128.
+        dec3 = self.dec3(
+            torch.cat([dec4, F.upsample(enc3, dec4.size()[2:], mode='bilinear')], 1))
+        dec2 = self.dec2(dec3)  # 128 -> 256.
+        dec1 = self.dec1(dec2)  # 256 -> 256.
 
-        final = self.final(dec1) # 256 -> 256.
+        final = self.final(dec1)  # 256 -> 256.
 
         # Returning tensors.
         if only_prediction:
             if use is not None:
-                return final[use,:,:,:]
+                return final[use, :, :, :]
             else:
                 return final
         else:
 
             if use is not None:
-                return final[use,:,:,:], [dec4, dec3, dec2, dec1]
+                return final[use, :, :, :], [dec4, dec3, dec2, dec1]
             else:
                 return final, [dec4, dec3, dec2, dec1]
 
 ####################################################################################
 # ResNet Architecture. ###############################################################
 ####################################################################################
+
 
 def conv3x3(in_planes, out_planes, stride=1, groups=1, dilation=1):
     """3x3 convolution with padding"""
@@ -806,7 +858,7 @@ class ResNet(nn.Module):
             norm_layer = nn.BatchNorm2d
         self._norm_layer = norm_layer
 
-        self.inplanes = 64
+        self.inplanes = 128
         self.dilation = 1
         if replace_stride_with_dilation is None:
             # each element in the tuple indicates if we should replace
@@ -894,3 +946,14 @@ class ResNet(nn.Module):
 
     def forward(self, x):
         return self._forward_impl(x)
+
+
+def _resnet(block, layers, num_classes):
+    model = ResNet(block, layers, num_classes)
+
+    return model
+
+
+def resnet50(num_classes=3):
+
+    return _resnet(Bottleneck, [2, 2, 2, 2], num_classes)
