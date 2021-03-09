@@ -17,5 +17,5 @@ ipython_config.py
 ./runs
 codagan/logs
 codagan/__pycache__/
-codagan/outputs/
-.ipynb
+codagan/outputs/*
+codagan/*.ipynb
