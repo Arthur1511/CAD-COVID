@@ -6,6 +6,7 @@ import pandas as pd
 
 from skimage import transform
 from skimage import io
+from sklearn.utils.class_weight import compute_sample_weight, compute_class_weight
 
 try:
     FileNotFoundError
@@ -35,34 +36,38 @@ def get_img_list(dir, dataset_number, csv_file, mode):
         tam_list = int(0.2*tam_dataset)
         labels = labels.iloc[-tam_list:]
 
+    class_count = [0, 0, 0]
     for i in range(tam_list):
         lab = labels.iloc[i]['Labels']
         img = labels.iloc[i]['Image_ID']
         try:
-            lab = lab.split('|')
+            lab = lab.lower().split('|')
         except:
-            lab = ['No Finding']
+            lab = ['no finding']
 
-        if not all(x in lab for x in ['Cardiomegaly', 'Atelectasis']):
-            label_list.append(lab)
+        if not all(x in lab for x in ['cardiomegaly', 'atelectasis']):
+            #             label_list.append(lab)
+            # if set(lab) == '':
+            #     label_list.append(-1)
+            if 'cardiomegaly' in lab:
+                label_list.append(0)
+                class_count[0] += 1
+            elif 'atelectasis' in lab:
+                label_list.append(1)
+                class_count[1] += 1
+            else:
+                label_list.append(2)
+                class_count[2] += 1
+
             img_list.append(img)
 
-    for j in range(len(label_list)):
-        if 'Cardiomegaly' in label_list[j]:
-            label_list[j] = [0]
-        elif 'Atelectasis' in label_list[j]:
-            label_list[j] = [1]
-        else:
-            label_list[j] = [2]
-
-    return img_list, label_list
+    return img_list, label_list, class_count
 
 
-'''
-list_im, list_label = get_img_list('/home/CADCOVID/Datasets_CoDAGANs/', 'dataset3/', 'dataset3.csv', 'test')
-print(list_im)
-print(list_label)
-'''
+# list_im, list_label = get_img_list(
+#     '../../CADCOVID/Datasets_CoDAGANs/', '0', 'dataset0.csv', 'train')
+# print(np.unique(list_label, return_counts=True))
+# print(list_label[:10])
 
 
 class ImageFolder(data.Dataset):
@@ -70,7 +75,8 @@ class ImageFolder(data.Dataset):
     def __init__(self, root, sample, dataset_number='0', mode='train',  loader=default_loader,  trim_bool=0, return_path=False, random_transform=False, channels=1, normalization='minmax'):
         file_csv = str('dataset' + dataset_number + '.csv')
         # file_txt = str(mode + '.txt')
-        imgs, labels = get_img_list(root, dataset_number, file_csv, mode)
+        imgs, labels, class_count = get_img_list(
+            root, dataset_number, file_csv, mode)
 
         self.root = root
         self.fold = 'dataset' + dataset_number
@@ -83,6 +89,12 @@ class ImageFolder(data.Dataset):
         self.random_transform = random_transform
         self.channels = channels
         self.normalization = normalization
+        self.n_classes = len(np.unique(labels))
+        # self.samples_weights = compute_sample_weight('balanced', y=labels)
+        self.weight_class = len(
+            labels) / (self.n_classes * np.array(class_count))
+        self.samples_weights = self.weight_class[self.labels]
+        self.class_count = class_count
 
         np.random.seed(12345)
 
@@ -162,7 +174,7 @@ class ImageFolder(data.Dataset):
 
         item = self.imgs[index]
         lbl = self.labels[index]
-        lbl = lbl[0]
+#         lbl = lbl[0]
 
         file_name = str(self.root + self.fold + '/images/' + item)
 
@@ -179,7 +191,11 @@ class ImageFolder(data.Dataset):
         use_label = False
 
         if self.trim_bool != 0:
-            img = self.trim(img)
+            #             img = self.trim(img)
+            try:
+                img = self.trim(img)
+            except:
+                pass
 
         if self.random_transform == 3:
             img = self.transform(img, negate=False, max_angle=90,
@@ -247,9 +263,37 @@ class ImageFolder(data.Dataset):
         return len(self.imgs)
 
 
-'''
-root = '/home/CADCOVID/Datasets_CoDAGANs/'
-dataset = ImageFolder(root, fold='dataset1', mode='train', loader=default_loader, trim_bool=0, return_path=False, random_transform=False, channels=1, normalization='minmax')
+# input_folder = '../../CADCOVID/Datasets_CoDAGANs/'
+# dataset = ImageFolder(input_folder, sample=1, dataset_number='0', mode='train', trim_bool=1,
+#                       return_path=True, random_transform=2, channels=1)
+# print(dataset.class_count, dataset.weight_class, dataset.samples_weights)
+# for i in range(dataset.__len__()):
+#     print(dataset.__getitem__(i)[1:])
 
-print(dataset.__getitem__(0))
-'''
+# def trim(img):
+
+#     tolerance = 0.05 * float(img.max())
+
+#     # Mask of non-black pixels (assuming image has a single channel).
+#     bin = img > tolerance
+
+#     # Coordinates of non-black pixels.
+#     coords = np.argwhere(bin)
+
+#     # Bounding box of non-black pixels.
+#     x0, y0 = coords.min(axis=0)
+#     x1, y1 = coords.max(axis=0) + 1   # slices are exclusive at the top
+
+#     # Get the contents of the bounding box.
+#     img_crop = img[x0:x1, y0:y1]
+
+#     return img_crop
+
+# a=default_loader('../../CADCOVID/Datasets_CoDAGANs/dataset1/images/232387753838738339711526121280969069202_3kz4uc.png')
+
+# try:
+#     a = trim(a)
+# except:
+#     pass
+
+# print(a)

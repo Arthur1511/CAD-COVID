@@ -53,19 +53,27 @@ def get_all_data_loaders(conf, n_datasets, samples, augmentation, trim, test_tra
     dataset_numbers = conf['dataset_numbers']
 
     train_loader_list = list()
+    train_samples_weights_list = list()
     test_loader_list = list()
+    test_samples_weights_list = list()
+    total_class_count = np.array([0,0,0])
 
     for i in range(n_datasets):
 
-        train_loader = get_data_loader_folder(os.path.join(conf['data_root']), 'train', dataset_numbers[i], batch_size, True,
+        train_loader, train_samples_weights, train_class_count = get_data_loader_folder(os.path.join(conf['data_root']), 'train', dataset_numbers[i], batch_size, True,
                                               trim, num_workers, sample=samples[i], return_path=True, random_transform=augmentation[i], channels=conf['input_dim'])
-        test_loader = get_data_loader_folder(os.path.join(conf['data_root']), 'test', dataset_numbers[i], 1,
+        
+        test_loader, test_samples_weights, test_class_count = get_data_loader_folder(os.path.join(conf['data_root']), 'test', dataset_numbers[i], 1,
                                              True, trim, num_workers, sample=1.0, return_path=True, random_transform=0, channels=conf['input_dim'])
 
         train_loader_list.append(train_loader)
-        test_loader_list.append(test_loader)
+        train_samples_weights_list.append(train_samples_weights)
+        total_class_count += train_class_count
 
-    return train_loader_list, test_loader_list
+        test_loader_list.append(test_loader)
+        test_samples_weights_list.append(test_samples_weights)
+
+    return train_loader_list, test_loader_list, train_samples_weights_list, test_samples_weights_list, total_class_count
 
 
 def get_data_loader_folder(input_folder, mode, dataset_number, batch_size, shuffle, trim, num_workers=4, sample=-1, return_path=False, random_transform=False, channels=1):
@@ -76,7 +84,7 @@ def get_data_loader_folder(input_folder, mode, dataset_number, batch_size, shuff
                           return_path=return_path, random_transform=random_transform, channels=channels)
     loader = DataLoader(dataset=dataset, batch_size=batch_size,
                         shuffle=shuffle, drop_last=True, num_workers=num_workers)
-    return loader
+    return loader, dataset.samples_weights, dataset.class_count
 
 
 def get_config(config):

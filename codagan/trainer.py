@@ -17,7 +17,7 @@ import numpy as np
 
 class MUNIT_Trainer(nn.Module):
 
-    def __init__(self, hyperparameters, resume_epoch=-1, snapshot_dir=None):
+    def __init__(self, hyperparameters, resume_epoch=-1, snapshot_dir=None, pesos_loss=None):
 
         super(MUNIT_Trainer, self).__init__()
 
@@ -78,15 +78,17 @@ class MUNIT_Trainer(nn.Module):
 
             self.resume(snapshot_dir, resume_epoch, hyperparameters)
 
+        self.pesos_loss = pesos_loss
+
     def recon_criterion(self, input, target):
 
         return torch.mean(torch.abs(input - target))
 
     def semi_criterion(self, input, target):
 
-        if self.cross_entropy_w is not None:
+        if self.pesos_loss is not None:
 
-            class_weights = torch.FloatTensor(self.cross_entropy_w).cuda()
+            class_weights = torch.FloatTensor(self.pesos_loss).cuda()
             loss = nn.CrossEntropyLoss(
                 weight=class_weights, reduction='mean', ignore_index=-1).cuda()
 
