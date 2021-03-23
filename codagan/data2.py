@@ -22,21 +22,24 @@ def default_loader(path):
 def get_img_list(dir, dataset_number, csv_file, mode):
     img_list = []
     label_list = []
+    diseases = ['cardiomegaly', 'atelectasis', 'pneumonia']
 
     img_dir = os.path.join(dir, 'dataset' + dataset_number + 'images/')
     csv_labels = str(dir + 'dataset' + dataset_number + '/' + csv_file)
     labels = pd.read_csv(csv_labels, usecols=['Image_ID', 'Labels'])
 
-    tam_dataset = labels.shape[0]
+    tam_dataset = int(labels.shape[0]*0.25)
 
     if mode == 'train':
         tam_list = int(0.8*tam_dataset)
         labels = labels.iloc[0:tam_list]
+        # print("Train len: ", len(labels))
     else:
         tam_list = int(0.2*tam_dataset)
         labels = labels.iloc[-tam_list:]
+        # print("Test len: ", len(labels))
 
-    class_count = [0, 0, 0]
+    class_count = [0, 0, 0, 0]
     for i in range(tam_list):
         lab = labels.iloc[i]['Labels']
         img = labels.iloc[i]['Image_ID']
@@ -45,26 +48,31 @@ def get_img_list(dir, dataset_number, csv_file, mode):
         except:
             lab = ['no finding']
 
-        if not all(x in lab for x in ['cardiomegaly', 'atelectasis']):
+        labels_numbers = sum(map(lambda x: x in diseases, lab))
+        # if not all(x in lab for x in ['cardiomegaly', 'atelectasis']):
+        if labels_numbers < 2:
             #             label_list.append(lab)
-            # if set(lab) == '':
-            #     label_list.append(-1)
+            if set(lab) == '':
+                label_list.append(-1)
             if 'cardiomegaly' in lab:
                 label_list.append(0)
                 class_count[0] += 1
             elif 'atelectasis' in lab:
                 label_list.append(1)
                 class_count[1] += 1
-            else:
+            elif 'pneumonia' in lab:
                 label_list.append(2)
                 class_count[2] += 1
+            else:
+                label_list.append(3)
+                class_count[3] += 1
 
             img_list.append(img)
 
     return img_list, label_list, class_count
 
 
-# list_im, list_label = get_img_list(
+# list_im, list_label, _ = get_img_list(
 #     '../../CADCOVID/Datasets_CoDAGANs/', '0', 'dataset0.csv', 'train')
 # print(np.unique(list_label, return_counts=True))
 # print(list_label[:10])
@@ -90,9 +98,12 @@ class ImageFolder(data.Dataset):
         self.channels = channels
         self.normalization = normalization
         self.n_classes = len(np.unique(labels))
-        # self.samples_weights = compute_sample_weight('balanced', y=labels)
-        self.weight_class = len(
-            labels) / (self.n_classes * np.array(class_count))
+        self.class_count = np.array(class_count, dtype=np.float)
+        self.samples_weights = compute_sample_weight('balanced', y=labels)
+        # self.weight_class = len(
+        #     labels) / (self.n_classes * self.class_count)
+        self.weight_class = np.divide(
+            float(len(labels)), (self.n_classes * self.class_count), out=np.zeros_like(self.class_count), where=self.class_count != 0)
         self.samples_weights = self.weight_class[self.labels]
         self.class_count = class_count
 
@@ -191,11 +202,11 @@ class ImageFolder(data.Dataset):
         use_label = False
 
         if self.trim_bool != 0:
-            #             img = self.trim(img)
-            try:
-                img = self.trim(img)
-            except:
-                pass
+            img = self.trim(img)
+            # try:
+            #     img = self.trim(img)
+            # except:
+            #     pass
 
         if self.random_transform == 3:
             img = self.transform(img, negate=False, max_angle=90,
@@ -215,7 +226,7 @@ class ImageFolder(data.Dataset):
             use_label = True
 
         if not use_label:
-            lbl[:] = -1
+            lbl = -1
 
         img = transform.resize(
             img, resize_to, preserve_range=True).astype(np.float32)
@@ -264,9 +275,10 @@ class ImageFolder(data.Dataset):
 
 
 # input_folder = '../../CADCOVID/Datasets_CoDAGANs/'
-# dataset = ImageFolder(input_folder, sample=1, dataset_number='0', mode='train', trim_bool=1,
-#                       return_path=True, random_transform=2, channels=1)
-# print(dataset.class_count, dataset.weight_class, dataset.samples_weights)
+# for i in range(4):
+#     dataset = ImageFolder(input_folder, sample=1, dataset_number=str(i), mode='test', trim_bool=1,
+#                           return_path=True, random_transform=2, channels=1)
+#     print(dataset.class_count, dataset.weight_class, dataset.samples_weights)
 # for i in range(dataset.__len__()):
 #     print(dataset.__getitem__(i)[1:])
 

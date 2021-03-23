@@ -53,19 +53,19 @@ crop_image_width: 256                       # Random crop image of this width.
 data_root: ../../CADCOVID/Datasets_CoDAGANs/           # Dataset folder location.
 # data_root: ../../hugo/GANs/CoDAGAN_Semi/datasets/Mammography_breast
 dataset_numbers: ['0', '1', '2', '3']
-n_datasets: 2                               # Number of datasets for Domain Adaptation.
-trim: 1                                     # Trim images or not.
+n_datasets: 3                               # Number of datasets for Domain Adaptation.
+trim: 0                                     # Trim images or not.
 transform_0: 2                              # Type of Data Augmentation. More info on file data.py.
 transform_1: 2                              # Type of Data Augmentation. More info on file data.py.
 transform_2: 2                              # Type of Data Augmentation. More info on file data.py.
 transform_3: 2                              # Type of Data Augmentation. More info on file data.py.
 
-prob_0: 0.5                                 # Probability of chosing the dataset at each iteration.
-prob_1: 0.5                                 # Probability of chosing the dataset at each iteration.
-prob_2: 0.4                                 # Probability of chosing the dataset at each iteration.
+prob_0: 0.25                                 # Probability of chosing the dataset at each iteration.
+prob_1: 0.25                                 # Probability of chosing the dataset at each iteration.
+prob_2: 0.25                                 # Probability of chosing the dataset at each iteration.
 prob_3: 0.25                                # Probability of chosing the dataset at each iteration.
 
 sample_0: 1.0                               # Percentage of labeled samples to maintain in dataset to simulate UDA and SSDA.
 sample_1: 1.0                               # Percentage of labeled samples to maintain in dataset to simulate UDA and SSDA.
 sample_2: 1.0                               # Percentage of labeled samples to maintain in dataset to simulate UDA and SSDA.
-sample_3: 0.0                               # Percentage of labeled samples to maintain in dataset to simulate UDA and SSDA.
+sample_3: 1.0                               # Percentage of labeled samples to maintain in dataset to simulate UDA and SSDA.

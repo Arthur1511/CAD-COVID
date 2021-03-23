@@ -56,15 +56,15 @@ def get_all_data_loaders(conf, n_datasets, samples, augmentation, trim, test_tra
     train_samples_weights_list = list()
     test_loader_list = list()
     test_samples_weights_list = list()
-    total_class_count = np.array([0,0,0])
+    total_class_count = np.array([0, 0, 0, 0])
 
     for i in range(n_datasets):
 
-        train_loader, train_samples_weights, train_class_count = get_data_loader_folder(os.path.join(conf['data_root']), 'train', dataset_numbers[i], batch_size, True,
-                                              trim, num_workers, sample=samples[i], return_path=True, random_transform=augmentation[i], channels=conf['input_dim'])
-        
+        train_loader, train_samples_weights, train_class_count = get_data_loader_folder(os.path.join(conf['data_root']), 'train', dataset_numbers[i], batch_size, False,
+                                                                                        trim, num_workers, sample=samples[i], return_path=True, random_transform=augmentation[i], channels=conf['input_dim'])
+
         test_loader, test_samples_weights, test_class_count = get_data_loader_folder(os.path.join(conf['data_root']), 'test', dataset_numbers[i], 1,
-                                             True, trim, num_workers, sample=1.0, return_path=True, random_transform=0, channels=conf['input_dim'])
+                                                                                     False, trim, num_workers, sample=1.0, return_path=True, random_transform=0, channels=conf['input_dim'])
 
         train_loader_list.append(train_loader)
         train_samples_weights_list.append(train_samples_weights)
@@ -82,7 +82,13 @@ def get_data_loader_folder(input_folder, mode, dataset_number, batch_size, shuff
     #                       trim_bool=trim, return_path=return_path, random_transform=random_transform, channels=channels)
     dataset = ImageFolder(input_folder, sample=sample, dataset_number=dataset_number, mode=mode, trim_bool=trim,
                           return_path=return_path, random_transform=random_transform, channels=channels)
-    loader = DataLoader(dataset=dataset, batch_size=batch_size,
+
+    samples_weights = torch.Tensor(dataset.samples_weights)
+    sampler = torch.utils.data.sampler.WeightedRandomSampler(
+        weights=samples_weights,
+        num_samples=dataset.__len__())
+
+    loader = DataLoader(dataset=dataset, batch_size=batch_size, sampler=sampler, pin_memory=True,
                         shuffle=shuffle, drop_last=True, num_workers=num_workers)
     return loader, dataset.samples_weights, dataset.class_count
 
@@ -90,7 +96,7 @@ def get_data_loader_folder(input_folder, mode, dataset_number, batch_size, shuff
 def get_config(config):
 
     with open(config, 'r') as stream:
-        return yaml.load(stream)
+        return yaml.load(stream, Loader=yaml.FullLoader)
 
 
 def eformat(f, prec):
@@ -277,11 +283,11 @@ def weights_init(init_type='gaussian'):
         if (classname.find('Conv') == 0 or classname.find('Linear') == 0) and hasattr(m, 'weight'):
             # print m.__class__.__name__
             if init_type == 'gaussian':
-                init.normal(m.weight.data, 0.0, 0.02)
+                init.normal_(m.weight.data, 0.0, 0.02)
             elif init_type == 'xavier':
                 init.xavier_normal(m.weight.data, gain=math.sqrt(2))
             elif init_type == 'kaiming':
-                init.kaiming_normal(m.weight.data, a=0, mode='fan_in')
+                init.kaiming_normal_(m.weight.data, a=0, mode='fan_in')
             elif init_type == 'orthogonal':
                 init.orthogonal(m.weight.data, gain=math.sqrt(2))
             elif init_type == 'default':
@@ -289,7 +295,7 @@ def weights_init(init_type='gaussian'):
             else:
                 assert 0, "Unsupported initialization: {}".format(init_type)
             if hasattr(m, 'bias') and m.bias is not None:
-                init.constant(m.bias.data, 0.0)
+                init.constant_(m.bias.data, 0.0)
 
     return init_fun
 

@@ -39,7 +39,7 @@ class MUNIT_Trainer(nn.Module):
         self.cross_entropy_w = hyperparameters['cross_entropy_w']
         # Initiating and loader pretrained UNet.
         # self.sup = UNet(input_channels=hyperparameters['input_dim'], num_classes=2).cuda()
-        self.sup = resnet50(num_classes=3).cuda()
+        self.sup = resnet50(num_classes=4).cuda()
 
         # Fix the noise used in sampling.
         self.s_a = torch.randn(8, self.style_dim, 1, 1).cuda()
